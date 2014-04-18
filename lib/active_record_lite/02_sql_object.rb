@@ -1,6 +1,7 @@
 require_relative 'db_connection'
 require_relative '01_mass_object'
 require 'active_support/inflector'
+require 'debugger'
 
 class MassObject
   def self.parse_all(results)
@@ -12,15 +13,20 @@ end
 
 class SQLObject < MassObject
   def self.columns
-    rows = DBConnection.execute2(<<-SQL)
-    SELECT *
-    FROM #{table_name}
-    SQL
+    if @columns.nil?
+      rows = DBConnection.execute2(<<-SQL)
+      SELECT *
+      FROM #{table_name}
+      SQL
 
-    rows.first.map { |row_name| row_name.to_sym }
+      @columns = rows.first.map { |row_name| row_name.to_sym }
+      self.setup_accessors(@columns)
+    end
+    @columns
+    
   end
   
-  def self.setup_accessors
+  def self.setup_accessors(column_names)
     self.columns.each do |column_name|
       define_method(column_name) do
         attributes[column_name] 
@@ -61,18 +67,19 @@ class SQLObject < MassObject
   end
 
   def insert
-    value_string = (["?"]*col_names.size).join(',')
-    cols = col_names.map(&:to_sym)
+    columns = self.class.columns
+    q_marks = (["?"]*columns.length).join(', ')
+    cols = columns.join(', ')
     vals = attribute_values
-    p "value string"
-    p value_string
-    puts
-    p "col_names"
-    p *cols
-    puts
-    p "vals"
-    p vals
     
+    query_string = <<-SQL
+    INSERT INTO
+    #{self.class.table_name} (#{cols})
+     VALUES
+     (#{q_marks})
+    SQL
+    
+    DBConnection.execute(query_string, *vals)
   end
   
   def col_names
@@ -80,9 +87,8 @@ class SQLObject < MassObject
   end
 
   def initialize(params = {})
-    self.class.setup_accessors 
-    
     params.each do |k,v|
+      raise "Invalid attribute" unless self.class.columns.include?(k.to_sym)
       attributes[k.to_sym] = v
     end
   end
@@ -96,6 +102,6 @@ class SQLObject < MassObject
   end
 
   def attribute_values
-    attributes.values
+    self.class.columns.map{|attr_name| self.send(attr_name)}
   end
 end
