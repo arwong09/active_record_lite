@@ -13,6 +13,10 @@ describe SQLObject do
       self.table_name = "humans"
     end
   end
+  
+  it "..." do
+    p Human.columns
+  end
 
   describe "::set_table/::table_name" do
     it "::set_table_name sets table name" do
