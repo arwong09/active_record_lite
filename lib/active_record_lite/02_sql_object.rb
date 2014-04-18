@@ -62,12 +62,17 @@ class SQLObject < MassObject
 
   def insert
     value_string = (["?"]*col_names.size).join(',')
-    p attribute_values
-    DBConnection.execute(<<-SQL, attribute_values.join(', '))
-    INSERT INTO
-    "#{self.class.table_name}" "#{col_names.join(', ')}" 
-    "#{value_string}"
-    SQL
+    cols = col_names.map(&:to_sym)
+    vals = attribute_values
+    p "value string"
+    p value_string
+    puts
+    p "col_names"
+    p *cols
+    puts
+    p "vals"
+    p vals
+    
   end
   
   def col_names
